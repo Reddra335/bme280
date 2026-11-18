@@ -1,0 +1,1656 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pressure Monitoring</title>
+
+    <!-- Library untuk export Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+      :root {
+        --primary: #237b78;
+        --primary-light: #e5f3f0;
+        --background: #f4f7f6;
+        --surface: #ffffff;
+        --text: #243333;
+        --muted: #849493;
+        --border: #e6eceb;
+        --success: #16a36a;
+        --danger: #dc5555;
+        --sidebar-width: 245px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        background: var(--background);
+        color: var(--text);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      .layout {
+        display: flex;
+        min-height: 100vh;
+      }
+
+      /* SIDEBAR */
+
+      .sidebar {
+        width: var(--sidebar-width);
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        padding: 28px 18px;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 10;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 10px;
+        margin-bottom: 42px;
+      }
+
+      .brand-icon {
+        width: 39px;
+        height: 39px;
+        border-radius: 12px;
+        background: var(--primary);
+        color: white;
+        display: grid;
+        place-items: center;
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      .brand-name {
+        font-size: 17px;
+        font-weight: 700;
+      }
+
+      .brand-subtitle {
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 4px;
+      }
+
+      .menu-label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: bold;
+        letter-spacing: 1px;
+        padding: 0 12px;
+        margin-bottom: 12px;
+      }
+
+      .nav-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+
+      .nav-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 13px 14px;
+        border: none;
+        border-radius: 9px;
+        background: transparent;
+        color: #738381;
+        text-align: left;
+        cursor: pointer;
+        font-size: 13px;
+        transition: 0.2s;
+      }
+
+      .nav-item:hover {
+        background: #f3f7f6;
+        color: var(--primary);
+      }
+
+      .nav-item.active {
+        background: var(--primary-light);
+        color: var(--primary);
+        font-weight: 700;
+      }
+
+      .nav-icon {
+        width: 20px;
+        text-align: center;
+        font-size: 17px;
+      }
+
+      .sidebar-bottom {
+        position: absolute;
+        bottom: 25px;
+        left: 23px;
+        right: 23px;
+        border-top: 1px solid var(--border);
+        padding-top: 17px;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      /* MAIN */
+
+      .main {
+        width: calc(100% - var(--sidebar-width));
+        margin-left: var(--sidebar-width);
+        padding: 32px 38px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        gap: 15px;
+      }
+
+      .page-title {
+        font-size: 23px;
+        font-weight: 700;
+      }
+
+      .page-description {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 7px;
+      }
+
+      .connection {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 13px;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 30px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .connection-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #aab7b5;
+      }
+
+      .connection.online .connection-dot {
+        background: var(--success);
+      }
+
+      .connection.offline .connection-dot {
+        background: var(--danger);
+      }
+
+      /* PAGE */
+
+      .page {
+        display: none;
+      }
+
+      .page.active {
+        display: block;
+      }
+
+      .section-heading {
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 17px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 13px;
+        padding: 24px;
+      }
+
+      .card-label {
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 12px;
+      }
+
+      /* MONITORING ANGKA */
+
+      .monitor-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 18px;
+      }
+
+      .pressure-card {
+        min-height: 245px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .pressure-value {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin: 15px 0 22px;
+      }
+
+      .pressure-value strong {
+        font-size: 57px;
+        font-weight: 700;
+        letter-spacing: -2px;
+      }
+
+      .pressure-value span {
+        font-size: 17px;
+        color: var(--muted);
+      }
+
+      .gauge-track {
+        height: 9px;
+        background: #edf1f0;
+        border-radius: 20px;
+        overflow: hidden;
+      }
+
+      .gauge-fill {
+        width: 0%;
+        height: 100%;
+        background: var(--primary);
+        border-radius: 20px;
+        transition: width 0.4s;
+      }
+
+      .gauge-caption {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 9px;
+      }
+
+      .info-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 245px;
+      }
+
+      .info-row {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .info-row:last-child {
+        border-bottom: none;
+      }
+
+      .info-row span {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .info-row strong {
+        font-size: 14px;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+      }
+
+      /* GRAFIK */
+
+      .chart-card {
+        margin-top: 20px;
+      }
+
+      .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .chart-title {
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .chart-unit {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .chart-wrapper {
+        width: 100%;
+        min-height: 300px;
+      }
+
+      .chart-wrapper svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        overflow: visible;
+      }
+
+      .chart-empty {
+        min-height: 250px;
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      /* FILTER */
+
+      .filter-bar {
+        display: flex;
+        align-items: end;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+
+      .filter-group label {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .filter-group input,
+      .filter-group select {
+        min-width: 155px;
+        height: 39px;
+        padding: 0 11px;
+        background: white;
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        outline: none;
+      }
+
+      .filter-group input:focus,
+      .filter-group select:focus {
+        border-color: var(--primary);
+      }
+
+      .btn {
+        height: 39px;
+        padding: 0 17px;
+        border: none;
+        border-radius: 7px;
+        background: var(--primary);
+        color: white;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .btn:hover {
+        opacity: 0.88;
+      }
+
+      .btn-secondary {
+        background: #edf3f2;
+        color: var(--primary);
+      }
+
+      /* TABLE */
+
+      .table-card {
+        padding: 0;
+        overflow: hidden;
+      }
+
+      .table-scroll {
+        width: 100%;
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        white-space: nowrap;
+      }
+
+      thead {
+        background: #f7f9f8;
+      }
+
+      th {
+        text-align: left;
+        padding: 15px 18px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      td {
+        padding: 15px 18px;
+        border-top: 1px solid var(--border);
+        font-size: 12px;
+      }
+
+      .pressure-cell {
+        color: var(--primary);
+        font-weight: 700;
+      }
+
+      .empty-row {
+        text-align: center;
+        color: var(--muted);
+        padding: 30px;
+      }
+
+      .table-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 15px 18px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .pagination {
+        display: flex;
+        gap: 7px;
+      }
+
+      .pagination button {
+        padding: 7px 11px;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      .pagination button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      /* EXPORT */
+
+      .export-card {
+        max-width: 670px;
+      }
+
+      .export-icon {
+        width: 52px;
+        height: 52px;
+        display: grid;
+        place-items: center;
+        background: var(--primary-light);
+        color: var(--primary);
+        border-radius: 12px;
+        font-size: 25px;
+        margin-bottom: 20px;
+      }
+
+      .export-card h2 {
+        font-size: 17px;
+        margin-bottom: 9px;
+      }
+
+      .export-card p {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.7;
+        margin-bottom: 24px;
+      }
+
+      .export-filters {
+        display: flex;
+        gap: 13px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+      }
+
+      .export-note {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 14px;
+      }
+
+      /* TOAST */
+
+      .toast {
+        position: fixed;
+        right: 25px;
+        bottom: 25px;
+        z-index: 20;
+        background: #243333;
+        color: white;
+        padding: 13px 18px;
+        border-radius: 8px;
+        font-size: 12px;
+        opacity: 0;
+        transform: translateY(10px);
+        pointer-events: none;
+        transition: 0.25s;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* RESPONSIVE */
+
+      @media (max-width: 900px) {
+        .sidebar {
+          width: 205px;
+        }
+
+        .main {
+          width: calc(100% - 205px);
+          margin-left: 205px;
+          padding: 25px 22px;
+        }
+
+        .monitor-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 650px) {
+        .layout {
+          display: block;
+        }
+
+        .sidebar {
+          position: relative;
+          width: 100%;
+          height: auto;
+          padding: 17px;
+          border-right: none;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .brand {
+          margin-bottom: 17px;
+        }
+
+        .menu-label,
+        .sidebar-bottom {
+          display: none;
+        }
+
+        .nav-menu {
+          flex-direction: row;
+          overflow-x: auto;
+        }
+
+        .nav-item {
+          width: auto;
+          min-width: max-content;
+          padding: 10px 12px;
+        }
+
+        .main {
+          width: 100%;
+          margin-left: 0;
+          padding: 22px 15px;
+        }
+
+        .topbar {
+          align-items: flex-start;
+          flex-direction: column;
+          margin-bottom: 22px;
+        }
+
+        .pressure-value strong {
+          font-size: 46px;
+        }
+
+        .card {
+          padding: 18px;
+        }
+
+        .filter-group,
+        .filter-group input,
+        .filter-group select {
+          width: 100%;
+        }
+
+        .table-footer {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="layout">
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-icon">P</div>
+
+          <div>
+            <div class="brand-name">Pressure Monitor</div>
+            <div class="brand-subtitle">IoT Monitoring System</div>
+          </div>
+        </div>
+
+        <div class="menu-label">MENU UTAMA</div>
+
+        <nav class="nav-menu">
+          <button class="nav-item active" data-page="monitor">
+            <span class="nav-icon">◉</span>
+            Monitoring Angka
+          </button>
+
+          <button class="nav-item" data-page="chart">
+            <span class="nav-icon">⌁</span>
+            Grafik Monitoring
+          </button>
+
+          <button class="nav-item" data-page="history">
+            <span class="nav-icon">▤</span>
+            Riwayat Data
+          </button>
+
+          <button class="nav-item" data-page="export">
+            <span class="nav-icon">⇩</span>
+            Download Excel
+          </button>
+        </nav>
+
+        <div class="sidebar-bottom">
+          Pressure Monitoring System<br />
+          IoT Dashboard
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT -->
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1 class="page-title" id="pageTitle">Monitoring Angka</h1>
+
+            <p class="page-description" id="pageDescription">
+              Pantau tekanan terkini dari perangkat sensor.
+            </p>
+          </div>
+
+          <div class="connection offline" id="connectionStatus">
+            <span class="connection-dot"></span>
+            <span id="connectionText">Menghubungkan...</span>
+          </div>
+        </header>
+
+        <!-- ================================== -->
+        <!-- HALAMAN 1: MONITORING ANGKA -->
+        <!-- ================================== -->
+
+        <section class="page active" id="monitor">
+          <div class="section-heading">Monitoring Terkini</div>
+
+          <div class="monitor-grid">
+            <div class="card pressure-card">
+              <div>
+                <div class="card-label">Tekanan Udara Saat Ini</div>
+
+                <div class="pressure-value">
+                  <strong id="pressureValue">--</strong>
+                  <span>kPa</span>
+                </div>
+              </div>
+
+              <div>
+                <div class="gauge-track">
+                  <div class="gauge-fill" id="gaugeFill"></div>
+                </div>
+
+                <div class="gauge-caption">
+                  <span>0 kPa</span>
+                  <span id="gaugeMax">40 kPa</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card info-card">
+              <div class="card-label">Informasi Pembacaan</div>
+
+              <div class="info-row">
+                <span>Status Koneksi</span>
+                <strong id="deviceStatus">Menunggu data</strong>
+              </div>
+
+              <div class="info-row">
+                <span>Device ID</span>
+                <strong id="deviceId">-</strong>
+              </div>
+
+              <div class="info-row">
+                <span>Waktu Pembacaan</span>
+                <strong id="readingTime">-</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================== -->
+        <!-- HALAMAN 2: GRAFIK -->
+        <!-- ================================== -->
+
+        <section class="page" id="chart">
+          <div class="card chart-card">
+            <div class="chart-header">
+              <div class="chart-title">Grafik Perubahan Tekanan</div>
+
+              <div class="chart-unit">Satuan: kPa</div>
+            </div>
+
+            <div class="chart-wrapper" id="chartContainer">
+              <div class="chart-empty">Menunggu data tekanan...</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================== -->
+        <!-- HALAMAN 3: HISTORY -->
+        <!-- ================================== -->
+
+        <section class="page" id="history">
+          <div class="section-heading">Riwayat Pembacaan Sensor</div>
+
+          <div class="filter-bar">
+            <div class="filter-group">
+              <label for="historyStart">Tanggal Mulai</label>
+              <input type="date" id="historyStart" />
+            </div>
+
+            <div class="filter-group">
+              <label for="historyEnd">Tanggal Akhir</label>
+              <input type="date" id="historyEnd" />
+            </div>
+
+            <div class="filter-group">
+              <label for="sortOrder">Urutkan Waktu</label>
+              <select id="sortOrder">
+                <option value="newest">Terbaru</option>
+                <option value="oldest">Terlama</option>
+              </select>
+            </div>
+
+            <button class="btn" id="filterButton">Terapkan Filter</button>
+
+            <button class="btn btn-secondary" id="resetFilterButton">
+              Reset
+            </button>
+          </div>
+
+          <div class="card table-card">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>DEVICE ID</th>
+                    <th>TEKANAN (kPa)</th>
+                    <th>WAKTU DIBACA</th>
+                  </tr>
+                </thead>
+
+                <tbody id="historyBody">
+                  <tr>
+                    <td colspan="4" class="empty-row">
+                      Memuat riwayat data...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="table-footer">
+              <span id="historyInfo"> Menampilkan 0 data </span>
+
+              <div class="pagination">
+                <button id="previousPage" disabled>Sebelumnya</button>
+
+                <button id="nextPage" disabled>Selanjutnya</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================== -->
+        <!-- HALAMAN 4: EXPORT EXCEL -->
+        <!-- ================================== -->
+
+        <section class="page" id="export">
+          <div class="card export-card">
+            <div class="export-icon">⇩</div>
+
+            <h2>Download Riwayat Data</h2>
+
+            <p>
+              Unduh data tekanan sensor ke dalam format Excel (.xlsx). Gunakan
+              filter tanggal untuk menentukan data yang ingin diunduh.
+            </p>
+
+            <div class="export-filters">
+              <div class="filter-group">
+                <label for="exportStart">Tanggal Mulai</label>
+                <input type="date" id="exportStart" />
+              </div>
+
+              <div class="filter-group">
+                <label for="exportEnd">Tanggal Akhir</label>
+                <input type="date" id="exportEnd" />
+              </div>
+            </div>
+
+            <button class="btn" id="exportButton">
+              Download Excel (.xlsx)
+            </button>
+
+            <div class="export-note" id="exportInfo">
+              File akan dibuat berdasarkan data riwayat yang tersedia.
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      // ==========================================
+      // KONFIGURASI API
+      // ==========================================
+
+      const API = {
+        latest: "/api/tekanan/terbaru",
+        history: "/api/tekanan/riwayat",
+        websocket: "/ws/tekanan",
+      };
+
+      // Batas tampilan awal grafik dan indikator.
+      // Sesuaikan dengan range pressure transducer yang digunakan.
+      const PRESSURE_MAX = 40;
+
+      const ROWS_PER_PAGE = 10;
+
+      // ==========================================
+      // STATE DATA
+      // ==========================================
+
+      let historyData = [];
+      let currentPage = 1;
+      let websocket = null;
+      let reconnectTimer = null;
+
+      // ==========================================
+      // HELPER
+      // ==========================================
+
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+
+        toast.textContent = message;
+        toast.classList.add("show");
+
+        setTimeout(() => {
+          toast.classList.remove("show");
+        }, 3000);
+      }
+
+      function escapeHTML(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (char) => {
+          const entities = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;",
+          };
+
+          return entities[char];
+        });
+      }
+
+      function normalizeData(row) {
+        if (!row || typeof row !== "object") {
+          return null;
+        }
+
+        const pressure = Number(row.tekanan_kpa ?? row.tekananKpa);
+
+        if (!Number.isFinite(pressure)) {
+          return null;
+        }
+
+        return {
+          id: row.id ?? "-",
+          device_id: row.device_id ?? row.deviceId ?? "-",
+          tekanan_kpa: pressure,
+          waktu_dibaca:
+            row.waktu_dibaca ?? row.waktuDibaca ?? new Date().toISOString(),
+        };
+      }
+
+      function unwrapItem(payload) {
+        let result = payload;
+
+        if (result && result.data !== undefined) {
+          result = result.data;
+        }
+
+        return normalizeData(result);
+      }
+
+      function unwrapRows(payload) {
+        let result = payload;
+
+        if (result && result.data !== undefined) {
+          result = result.data;
+        }
+
+        if (result && !Array.isArray(result)) {
+          result = result.rows ?? result.items ?? result.results ?? [];
+        }
+
+        if (!Array.isArray(result)) {
+          return [];
+        }
+
+        return result.map(normalizeData).filter((item) => item !== null);
+      }
+
+      async function fetchJSON(url) {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} saat mengambil ${url}`);
+        }
+
+        return await response.json();
+      }
+
+      function formatDateTime(value) {
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+          return "-";
+        }
+
+        return new Intl.DateTimeFormat("id-ID", {
+          dateStyle: "medium",
+          timeStyle: "medium",
+        }).format(date);
+      }
+
+      function getLocalDate(value) {
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+          return "";
+        }
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+
+        return `${year}-${month}-${day}`;
+      }
+
+      function setConnection(online, message) {
+        const status = document.getElementById("connectionStatus");
+
+        status.classList.toggle("online", online);
+        status.classList.toggle("offline", !online);
+
+        document.getElementById("connectionText").textContent = message;
+
+        document.getElementById("deviceStatus").textContent = online
+          ? "Terhubung"
+          : "Tidak terhubung";
+      }
+
+      // ==========================================
+      // NAVIGASI HALAMAN
+      // ==========================================
+
+      const pageInfo = {
+        monitor: {
+          title: "Monitoring Angka",
+          description: "Pantau tekanan terkini dari perangkat sensor.",
+        },
+
+        chart: {
+          title: "Grafik Monitoring",
+          description: "Lihat perubahan tekanan berdasarkan waktu.",
+        },
+
+        history: {
+          title: "Riwayat Data",
+          description: "Lihat catatan pembacaan tekanan dari database.",
+        },
+
+        export: {
+          title: "Download Excel",
+          description: "Unduh riwayat pembacaan tekanan.",
+        },
+      };
+
+      document.querySelectorAll(".nav-item").forEach((button) => {
+        button.addEventListener("click", () => {
+          const target = button.dataset.page;
+
+          document.querySelectorAll(".nav-item").forEach((item) => {
+            item.classList.remove("active");
+          });
+
+          document.querySelectorAll(".page").forEach((page) => {
+            page.classList.remove("active");
+          });
+
+          button.classList.add("active");
+
+          document.getElementById(target).classList.add("active");
+
+          document.getElementById("pageTitle").textContent =
+            pageInfo[target].title;
+
+          document.getElementById("pageDescription").textContent =
+            pageInfo[target].description;
+
+          if (target === "chart") {
+            renderChart();
+          }
+
+          if (target === "history") {
+            renderHistory();
+          }
+        });
+      });
+
+      // ==========================================
+      // MONITORING ANGKA
+      // ==========================================
+
+      function updateMonitoring(data) {
+        document.getElementById("pressureValue").textContent =
+          data.tekanan_kpa.toFixed(2);
+
+        document.getElementById("deviceId").textContent = data.device_id;
+
+        document.getElementById("readingTime").textContent = formatDateTime(
+          data.waktu_dibaca,
+        );
+
+        const percentage = Math.max(
+          0,
+          Math.min(100, (data.tekanan_kpa / PRESSURE_MAX) * 100),
+        );
+
+        document.getElementById("gaugeFill").style.width = `${percentage}%`;
+      }
+
+      async function loadLatest() {
+        try {
+          const payload = await fetchJSON(API.latest);
+          const data = unwrapItem(payload);
+
+          if (data) {
+            updateMonitoring(data);
+          }
+        } catch (error) {
+          console.error("Gagal mengambil data terbaru:", error);
+        }
+      }
+
+      // ==========================================
+      // GRAFIK
+      // ==========================================
+
+      function renderChart() {
+        const container = document.getElementById("chartContainer");
+
+        const data = [...historyData]
+          .sort((a, b) => {
+            return new Date(a.waktu_dibaca) - new Date(b.waktu_dibaca);
+          })
+          .slice(-30);
+
+        if (data.length === 0) {
+          container.innerHTML = `
+                <div class="chart-empty">
+                    Belum ada data untuk ditampilkan.
+                </div>
+            `;
+
+          return;
+        }
+
+        const width = 900;
+        const height = 310;
+
+        const left = 55;
+        const right = 25;
+        const top = 20;
+        const bottom = 55;
+
+        const chartWidth = width - left - right;
+        const chartHeight = height - top - bottom;
+
+        const maxPressure = Math.max(
+          PRESSURE_MAX,
+          Math.ceil(Math.max(...data.map((item) => item.tekanan_kpa)) / 10) *
+            10,
+        );
+
+        function xPosition(index) {
+          if (data.length === 1) {
+            return left + chartWidth / 2;
+          }
+
+          return left + (index / (data.length - 1)) * chartWidth;
+        }
+
+        function yPosition(value) {
+          return top + chartHeight - (value / maxPressure) * chartHeight;
+        }
+
+        const points = data.map((item, index) => ({
+          x: xPosition(index),
+          y: yPosition(item.tekanan_kpa),
+          pressure: item.tekanan_kpa,
+          time: item.waktu_dibaca,
+        }));
+
+        const linePath = points
+          .map((point, index) => {
+            return `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`;
+          })
+          .join(" ");
+
+        const areaPath = `
+            ${linePath}
+            L ${points[points.length - 1].x} ${top + chartHeight}
+            L ${points[0].x} ${top + chartHeight}
+            Z
+        `;
+
+        let gridLines = "";
+
+        for (let i = 0; i <= 4; i++) {
+          const value = (maxPressure / 4) * i;
+          const y = yPosition(value);
+
+          gridLines += `
+                <line
+                    x1="${left}"
+                    y1="${y}"
+                    x2="${width - right}"
+                    y2="${y}"
+                    stroke="#e8eeec"
+                    stroke-width="1"
+                />
+
+                <text
+                    x="${left - 12}"
+                    y="${y + 4}"
+                    text-anchor="end"
+                    fill="#849493"
+                    font-size="11"
+                >
+                    ${value.toFixed(0)}
+                </text>
+            `;
+        }
+
+        let timeLabels = "";
+
+        const labelCount = Math.min(5, points.length);
+
+        for (let i = 0; i < labelCount; i++) {
+          const index =
+            labelCount === 1
+              ? 0
+              : Math.round((i / (labelCount - 1)) * (points.length - 1));
+
+          const point = points[index];
+
+          const date = new Date(point.time);
+
+          const label = Number.isNaN(date.getTime())
+            ? ""
+            : date.toLocaleTimeString("id-ID", {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+
+          timeLabels += `
+                <text
+                    x="${point.x}"
+                    y="${height - 20}"
+                    text-anchor="middle"
+                    fill="#849493"
+                    font-size="11"
+                >
+                    ${label}
+                </text>
+            `;
+        }
+
+        const circles = points
+          .map(
+            (point) => `
+            <circle
+                cx="${point.x}"
+                cy="${point.y}"
+                r="4"
+                fill="#237b78"
+                stroke="white"
+                stroke-width="2"
+            />
+        `,
+          )
+          .join("");
+
+        container.innerHTML = `
+            <svg viewBox="0 0 ${width} ${height}"
+                 role="img"
+                 aria-label="Grafik perubahan tekanan">
+
+                <defs>
+                    <linearGradient id="chartGradient"
+                        x1="0" y1="0" x2="0" y2="1">
+
+                        <stop offset="0%"
+                              stop-color="#237b78"
+                              stop-opacity="0.22"/>
+
+                        <stop offset="100%"
+                              stop-color="#237b78"
+                              stop-opacity="0.01"/>
+                    </linearGradient>
+                </defs>
+
+                ${gridLines}
+
+                <path
+                    d="${areaPath}"
+                    fill="url(#chartGradient)"
+                />
+
+                <path
+                    d="${linePath}"
+                    fill="none"
+                    stroke="#237b78"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                />
+
+                ${circles}
+                ${timeLabels}
+
+            </svg>
+        `;
+      }
+
+      // ==========================================
+      // RIWAYAT DATA
+      // ==========================================
+
+      async function loadHistory() {
+        try {
+          const payload = await fetchJSON(API.history);
+
+          historyData = unwrapRows(payload);
+
+          currentPage = 1;
+
+          renderHistory();
+          renderChart();
+        } catch (error) {
+          console.error("Gagal mengambil riwayat:", error);
+
+          document.getElementById("historyBody").innerHTML = `
+                <tr>
+                    <td colspan="4" class="empty-row">
+                        Gagal mengambil riwayat dari server.
+                    </td>
+                </tr>
+            `;
+        }
+      }
+
+      function getFilteredHistory() {
+        let result = [...historyData];
+
+        const start = document.getElementById("historyStart").value;
+        const end = document.getElementById("historyEnd").value;
+
+        if (start) {
+          result = result.filter((item) => {
+            return getLocalDate(item.waktu_dibaca) >= start;
+          });
+        }
+
+        if (end) {
+          result = result.filter((item) => {
+            return getLocalDate(item.waktu_dibaca) <= end;
+          });
+        }
+
+        const sort = document.getElementById("sortOrder").value;
+
+        result.sort((a, b) => {
+          const timeA = new Date(a.waktu_dibaca).getTime();
+          const timeB = new Date(b.waktu_dibaca).getTime();
+
+          return sort === "oldest" ? timeA - timeB : timeB - timeA;
+        });
+
+        return result;
+      }
+
+      function renderHistory() {
+        const body = document.getElementById("historyBody");
+
+        const filtered = getFilteredHistory();
+
+        const totalPages = Math.max(
+          1,
+          Math.ceil(filtered.length / ROWS_PER_PAGE),
+        );
+
+        currentPage = Math.min(currentPage, totalPages);
+
+        const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+
+        const pageData = filtered.slice(startIndex, startIndex + ROWS_PER_PAGE);
+
+        if (pageData.length === 0) {
+          body.innerHTML = `
+                <tr>
+                    <td colspan="4" class="empty-row">
+                        Tidak ada data yang ditemukan.
+                    </td>
+                </tr>
+            `;
+        } else {
+          body.innerHTML = pageData
+            .map(
+              (item) => `
+                <tr>
+                    <td>${escapeHTML(item.id)}</td>
+
+                    <td>${escapeHTML(item.device_id)}</td>
+
+                    <td class="pressure-cell">
+                        ${item.tekanan_kpa.toFixed(2)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(formatDateTime(item.waktu_dibaca))}
+                    </td>
+                </tr>
+            `,
+            )
+            .join("");
+        }
+
+        document.getElementById("historyInfo").textContent =
+          `Menampilkan ${pageData.length} dari ${filtered.length} data`;
+
+        document.getElementById("previousPage").disabled = currentPage <= 1;
+
+        document.getElementById("nextPage").disabled =
+          currentPage >= totalPages;
+      }
+
+      document.getElementById("filterButton").addEventListener("click", () => {
+        currentPage = 1;
+        renderHistory();
+      });
+
+      document
+        .getElementById("resetFilterButton")
+        .addEventListener("click", () => {
+          document.getElementById("historyStart").value = "";
+          document.getElementById("historyEnd").value = "";
+          document.getElementById("sortOrder").value = "newest";
+
+          currentPage = 1;
+
+          renderHistory();
+        });
+
+      document.getElementById("sortOrder").addEventListener("change", () => {
+        currentPage = 1;
+        renderHistory();
+      });
+
+      document.getElementById("previousPage").addEventListener("click", () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderHistory();
+        }
+      });
+
+      document.getElementById("nextPage").addEventListener("click", () => {
+        const totalPages = Math.ceil(
+          getFilteredHistory().length / ROWS_PER_PAGE,
+        );
+
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderHistory();
+        }
+      });
+
+      // ==========================================
+      // DOWNLOAD EXCEL
+      // ==========================================
+
+      document.getElementById("exportButton").addEventListener("click", () => {
+        if (typeof XLSX === "undefined") {
+          showToast("Library Excel tidak berhasil dimuat.");
+          return;
+        }
+
+        const start = document.getElementById("exportStart").value;
+        const end = document.getElementById("exportEnd").value;
+
+        let result = [...historyData];
+
+        if (start) {
+          result = result.filter((item) => {
+            return getLocalDate(item.waktu_dibaca) >= start;
+          });
+        }
+
+        if (end) {
+          result = result.filter((item) => {
+            return getLocalDate(item.waktu_dibaca) <= end;
+          });
+        }
+
+        result.sort((a, b) => {
+          return new Date(a.waktu_dibaca) - new Date(b.waktu_dibaca);
+        });
+
+        if (result.length === 0) {
+          showToast("Tidak ada data untuk diunduh.");
+          return;
+        }
+
+        const excelData = result.map((item) => ({
+          ID: item.id,
+          "Device ID": item.device_id,
+          "Tekanan (kPa)": item.tekanan_kpa,
+          "Waktu Dibaca": formatDateTime(item.waktu_dibaca),
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+        const workbook = XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Riwayat Tekanan");
+
+        const fileName = `riwayat_tekanan_${new Date()
+          .toISOString()
+          .slice(0, 10)}.xlsx`;
+
+        XLSX.writeFile(workbook, fileName);
+
+        showToast("File Excel berhasil dibuat.");
+      });
+
+      // ==========================================
+      // WEBSOCKET REALTIME
+      // ==========================================
+
+      function addLiveData(data) {
+        updateMonitoring(data);
+
+        const exists = historyData.some((item) => {
+          if (item.id !== "-" && data.id !== "-") {
+            return String(item.id) === String(data.id);
+          }
+
+          return (
+            item.waktu_dibaca === data.waktu_dibaca &&
+            item.device_id === data.device_id
+          );
+        });
+
+        if (!exists) {
+          historyData.unshift(data);
+        }
+
+        renderHistory();
+        renderChart();
+      }
+
+      function connectWebSocket() {
+        if (
+          websocket &&
+          (websocket.readyState === WebSocket.OPEN ||
+            websocket.readyState === WebSocket.CONNECTING)
+        ) {
+          return;
+        }
+
+        const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+
+        const url = `${protocol}//${location.host}${API.websocket}`;
+
+        websocket = new WebSocket(url);
+
+        websocket.onopen = () => {
+          setConnection(true, "Realtime terhubung");
+          console.log("WebSocket terhubung.");
+        };
+
+        websocket.onmessage = (event) => {
+          console.log("[WS] RAW dari Go:", event.data);
+
+          try {
+            const payload = JSON.parse(event.data);
+
+            const data = normalizeData(payload);
+
+            console.log("[WS] Data setelah diproses:", data);
+
+            if (!data) {
+              console.error("[WS] Data tidak valid");
+              return;
+            }
+
+            // Update angka monitoring.
+            updateMonitoring(data);
+
+            // Update grafik dan riwayat.
+            const exists = historyData.some(
+              (item) =>
+                item.id !== "-" &&
+                data.id !== "-" &&
+                String(item.id) === String(data.id),
+            );
+
+            if (!exists) {
+              historyData.unshift(data);
+            }
+
+            renderHistory();
+            renderChart();
+
+            console.log("[WS] Frontend berhasil diperbarui:", data.tekanan_kpa);
+          } catch (error) {
+            console.error("[WS] Gagal memproses pesan:", error);
+          }
+        };
+
+        websocket.onerror = (error) => {
+          console.error("WebSocket error:", error);
+        };
+
+        websocket.onclose = () => {
+          setConnection(false, "Realtime terputus");
+
+          console.log("WebSocket terputus. Mencoba menghubungkan kembali...");
+
+          clearTimeout(reconnectTimer);
+
+          reconnectTimer = setTimeout(() => {
+            connectWebSocket();
+          }, 3000);
+        };
+      }
+
+      // ==========================================
+      // MULAI APLIKASI
+      // ==========================================
+
+      async function initializeDashboard() {
+        document.getElementById("gaugeMax").textContent = `${PRESSURE_MAX} kPa`;
+
+        await Promise.all([loadLatest(), loadHistory()]);
+
+        connectWebSocket();
+      }
+
+      initializeDashboard();
+    </script>
+  </body>
+</html>
