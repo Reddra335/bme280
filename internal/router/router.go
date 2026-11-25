@@ -12,10 +12,8 @@ import (
 func InitRouter(app *fiber.App, t *handler.TekananWebSocketHandler, h *tekananhandler.TekananHandler) {
 
 	app.Use("/ws", middleware.Update)
-	app.Get("/ws/tekanan", websocket.New(t.Handle))
+	app.Get("/ws/bme280", websocket.New(t.Handle))
 
-	//tampilkan html
-	// HTTP
-	app.Get("/api/tekanan/terbaru", h.AmbilTerbaru)
-	app.Get("/api/tekanan/riwayat", h.AmbilRiwayat)
+	app.Get("/api/bme280/terbaru", h.AmbilTerbaru)
+	app.Get("/api/bme280/riwayat", h.AmbilRiwayat)
 }

@@ -18,8 +18,7 @@ import (
 )
 
 func main() {
-	const mqttTopic = "tekanan/data"
-
+	const mqttTopic = "bme280/data"
 	// 1. Membaca konfigurasi dari .env.
 	if err := godotenv.Load(); err != nil {
 		log.Println("File .env tidak ditemukan, menggunakan environment variables")

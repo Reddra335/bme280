@@ -1,17 +1,12 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 type Data struct {
-	ID          int       `json:"id"`
-	DeviceId    string    `json:"device_id"`
-	TekananKpa  float64   `json:"tekanan_kpa"`
-	WaktuDibaca time.Time `json:"waktu_dibaca"`
+	ID           int       `json:"id"`
+	DeviceId     string    `json:"device_id"`
+	Temperatur   float64   `json:"temperatur"`
+	Kelembapan   float64   `json:"kelembapan"`
+	TekananUdara float64   `json:"tekananUdara"`
+	DataDibuat   time.Time `json:"dataDibuat"`
 }
-
-// id BIGINT
-// device_id VARCHAR(50)
-// tekanan_kpa DOUBLE PRECISION
-// waktu_dibaca TIMESTAMPTZ

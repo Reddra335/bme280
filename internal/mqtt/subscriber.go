@@ -61,7 +61,6 @@ func (s *Subscriber) Subscribe(topic string) error {
 
 // Menerima pesan dari MQTT Broker.
 func (s *Subscriber) handleMessage(client paho.Client, msg paho.Message) {
-	// 1. Decode JSON menjadi DTO.
 	var req dto.DataReq
 
 	if err := json.Unmarshal(msg.Payload(), &req); err != nil {
@@ -70,52 +69,40 @@ func (s *Subscriber) handleMessage(client paho.Client, msg paho.Message) {
 			"layer":     "mqtt",
 			"topic":     msg.Topic(),
 		}).WithError(err).Error("payload MQTT tidak valid")
-
 		return
 	}
 
-	// 2. Validasi device ID.
 	deviceID := strings.TrimSpace(req.DeviceId)
-
 	if deviceID == "" {
-		s.log.Error("device_id tidak boleh kosong")
-		return
+		deviceID = "bme280"
 	}
 
-	// 3. Ubah DTO menjadi domain.
+	waktu := time.Now().UTC()
+	if req.DataDibuat != nil && !req.DataDibuat.IsZero() {
+		waktu = req.DataDibuat.UTC()
+	}
+
 	data := domain.Data{
-		DeviceId:    deviceID,
-		TekananKpa:  req.TekananKpa,
-		WaktuDibaca: time.Now().UTC(),
+		DeviceId:     deviceID,
+		Temperatur:   req.Temperatur,
+		Kelembapan:   req.Kelembapan,
+		TekananUdara: req.TekananUdara,
+		DataDibuat:   waktu,
+	}
+
+	if err := s.service.Save(context.Background(), data); err != nil {
+		s.log.WithFields(logrus.Fields{
+			"operation": "save data sensor",
+			"layer":     "mqtt",
+		}).WithError(err).Error("gagal menyimpan data BME280")
+		return
 	}
 
 	s.log.WithFields(logrus.Fields{
-		"topic":       msg.Topic(),
-		"device_id":   data.DeviceId,
-		"tekanan_kpa": data.TekananKpa,
-	}).Info("pesan MQTT berhasil diterima")
+		"temperatur":    data.Temperatur,
+		"kelembapan":    data.Kelembapan,
+		"tekanan_udara": data.TekananUdara,
+	}).Info("data BME280 tersimpan dan diteruskan ke WebSocket")
 
-	// 4. Simpan ke PostgreSQL melalui service.
-	if err := s.service.Save(context.Background(), data); err != nil {
-		s.log.WithFields(logrus.Fields{
-			"operation": "save tekanan",
-			"layer":     "mqtt",
-		}).WithError(err).Error("gagal menyimpan data tekanan")
-
-		return
-	}
-
-	s.log.Info(fmt.Sprintf(
-		"data berhasil disimpan ke PostgreSQL: %.2f kPa",
-		data.TekananKpa,
-	))
-
-	// 5. Teruskan data yang sudah berhasil disimpan.
-	// Tidak menggunakan default agar data tidak langsung dibuang.
 	s.dataStream <- data
-
-	s.log.Info(fmt.Sprintf(
-		"data berhasil diteruskan ke channel WebSocket: %.2f kPa",
-		data.TekananKpa,
-	))
 }

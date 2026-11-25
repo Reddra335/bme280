@@ -17,24 +17,30 @@ func NewTekananImpln(db *sql.DB) Tekanan {
 }
 
 func (t *TekananImpln) Save(ctx context.Context, data domain.Data) error {
-	query := `INSERT INTO tekanan.data (device_id, tekanan_kpa, waktu_dibaca) VALUES ($1,$2,$3);`
-
-	_, err := t.db.ExecContext(ctx, query, data.DeviceId, data.TekananKpa, data.WaktuDibaca)
-	if err != nil {
-
-		return err
-	}
-
-	return nil
-
-}
-func (t *TekananImpln) GetAll(ctx context.Context) ([]domain.Data, error) {
-
 	query := `
-        SELECT id, device_id, tekanan_kpa, waktu_dibaca
-        FROM tekanan.data
-        ORDER BY waktu_dibaca DESC
-    `
+		INSERT INTO sensor.data_sensor (device_id, temperatur, kelembapan, tekanan_udara, data_dibuat)
+		VALUES ($1, $2, $3, $4, $5);
+	`
+
+	_, err := t.db.ExecContext(
+		ctx,
+		query,
+		data.DeviceId,
+		data.Temperatur,
+		data.Kelembapan,
+		data.TekananUdara,
+		data.DataDibuat,
+	)
+	return err
+}
+
+func (t *TekananImpln) GetAll(ctx context.Context) ([]domain.Data, error) {
+	query := `
+		SELECT id, device_id, temperatur, kelembapan, tekanan_udara, data_dibuat
+		FROM sensor.data_sensor
+		ORDER BY data_dibuat DESC
+		LIMIT 200
+	`
 
 	rows, err := t.db.QueryContext(ctx, query)
 	if err != nil {
@@ -46,12 +52,13 @@ func (t *TekananImpln) GetAll(ctx context.Context) ([]domain.Data, error) {
 
 	for rows.Next() {
 		var data domain.Data
-
 		err := rows.Scan(
 			&data.ID,
 			&data.DeviceId,
-			&data.TekananKpa,
-			&data.WaktuDibaca,
+			&data.Temperatur,
+			&data.Kelembapan,
+			&data.TekananUdara,
+			&data.DataDibuat,
 		)
 		if err != nil {
 			return nil, err
@@ -65,25 +72,25 @@ func (t *TekananImpln) GetAll(ctx context.Context) ([]domain.Data, error) {
 	}
 
 	return result, nil
-
 }
+
 func (t *TekananImpln) GetLatest(ctx context.Context) (domain.Data, error) {
 	query := `
-        SELECT id, device_id, tekanan_kpa, waktu_dibaca
-        FROM tekanan.data
-        ORDER BY waktu_dibaca DESC
-        LIMIT 1
-    `
+		SELECT id, device_id, temperatur, kelembapan, tekanan_udara, data_dibuat
+		FROM sensor.data_sensor
+		ORDER BY data_dibuat DESC
+		LIMIT 1
+	`
 
 	var data domain.Data
-
 	err := t.db.QueryRowContext(ctx, query).Scan(
 		&data.ID,
 		&data.DeviceId,
-		&data.TekananKpa,
-		&data.WaktuDibaca,
+		&data.Temperatur,
+		&data.Kelembapan,
+		&data.TekananUdara,
+		&data.DataDibuat,
 	)
-
 	if err != nil {
 		return domain.Data{}, err
 	}
